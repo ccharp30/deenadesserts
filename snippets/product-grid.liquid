@@ -7,6 +7,8 @@
   @param {string} [title] - Header of the collection or search results
   @param {string} children - List or grid of product cards
   @param {boolean} [enable_infinite_scroll] - Whether to enable infinite scroll (default: true)
+  @param {string} [empty_title] - Replaces the default "No products found" message and drops the filters hint
+  @param {boolean} [full_mobile_row_gap] - Use the full vertical gap on mobile instead of capping it at 12px
 {%- enddoc -%}
 
 {%- liquid
@@ -96,7 +98,7 @@
   <div
     style="
       grid-column: var(--full-width);
-      --product-grid-gap-mobile: {{ section.settings.columns_gap_vertical | at_most: 12 }}px {{ section.settings.columns_gap_horizontal | at_most: 12 }}px;
+      --product-grid-gap-mobile: {% if full_mobile_row_gap %}{{ section.settings.columns_gap_vertical }}{% else %}{{ section.settings.columns_gap_vertical | at_most: 12 }}{% endif %}px {{ section.settings.columns_gap_horizontal | at_most: 12 }}px;
       --product-grid-gap-desktop: {{ section.settings.columns_gap_vertical }}px {{ section.settings.columns_gap_horizontal }}px;
       container-type: inline-size;
       container-name: product-grid;
@@ -109,11 +111,17 @@
       {% render 'product-card-gallery-zoom-details-styles' %}
       <div class="main-collection-grid__empty">
         <h2 class="main-collection-grid__empty-title h2">
-          {{ 'content.no_products_found' | t }}
+          {%- if empty_title != blank -%}
+            {{ empty_title }}
+          {%- else -%}
+            {{ 'content.no_products_found' | t }}
+          {%- endif -%}
         </h2>
-        <p>
-          {{ 'content.use_fewer_filters_html' | t: link: collection.url, class: 'main-collection-grid__empty-link' }}
-        </p>
+        {% if empty_title == blank %}
+          <p>
+            {{ 'content.use_fewer_filters_html' | t: link: collection.url, class: 'main-collection-grid__empty-link' }}
+          </p>
+        {% endif %}
       </div>
     {% else %}
       {% if enable_infinite_scroll %}

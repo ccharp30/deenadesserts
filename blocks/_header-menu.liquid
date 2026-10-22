@@ -195,6 +195,7 @@
       class="header-menu"
       {{ block.shopify_attributes }}
       data-hydration-key="header-menu"
+      data-submenu-trigger="{{ block_settings.submenu_trigger | default: 'hover' }}"
       data-skip-node-update
     >
       <div class="header-menu__inner">
@@ -672,7 +673,7 @@
   .mega-menu__link-image {
     width: 100%;
     position: relative;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 1 / 1;
     margin-bottom: var(--padding-sm);
     object-fit: cover;
     border-radius: var(--menu-image-border-radius);
@@ -698,7 +699,7 @@
     content: '';
     display: block;
     width: 100%;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 1 / 1;
     margin-bottom: var(--padding-sm);
     background-color: var(--color-foreground-muted);
     opacity: 0.1;
@@ -966,6 +967,22 @@
         }
       ],
       "default": "collection_images"
+    },
+    {
+      "type": "select",
+      "id": "submenu_trigger",
+      "label": "Open submenus on",
+      "options": [
+        {
+          "value": "hover",
+          "label": "Hover"
+        },
+        {
+          "value": "click",
+          "label": "Click"
+        }
+      ],
+      "default": "hover"
     },
     {
       "type": "select",

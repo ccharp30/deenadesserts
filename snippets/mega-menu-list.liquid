@@ -49,6 +49,14 @@
     endif
   endif
 
+  # Collection images: 5 across on desktop and 3 below 990px once there are 5+ links (theme default is 6 / 4)
+  if menu_content_type == 'collection_images' and parent_link.links.size >= 5
+    assign grid_columns_count = 5
+    assign max_menu_columns = 5
+    assign grid_columns_count_tablet = 3
+    assign max_menu_columns_tablet = 3
+  endif
+
   if menu_content_type == 'featured_collections'
     if parent_link.type == 'collection_link'
       assign collection_handles = parent_link.object.handle | append: ','
@@ -129,7 +137,12 @@
             -%}
           {%- endcapture -%}
 
-          {% render 'link-featured-image', link: link, class: 'mega-menu__link-image', sizes: collection_image_sizes %}
+          {% render 'link-featured-image',
+            link: link,
+            class: 'mega-menu__link-image',
+            sizes: collection_image_sizes,
+            use_focal_point: true
+          %}
         {% endif %}
         <span class="wrap-text">
           {{- link.title -}}

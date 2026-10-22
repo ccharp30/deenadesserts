@@ -4,44 +4,47 @@
   @param {object} link - The link to render
   @param {string} [class] - The class to apply to the image
   @param {string} [sizes] - The sizes to apply to the image
+  @param {boolean} [use_focal_point] - Crop around the image's focal point (set in Shopify admin) via object-position
 
   @example
   {% render 'link-featured-image', link: link %}
 {%- enddoc -%}
 
-{% assign image_sizes = sizes | default: 'auto' %}
+{% liquid
+  assign image_sizes = sizes | default: 'auto'
+  assign featured_image = null
 
-{% if link.type == 'collection_link' %}
-  {% if link.object.featured_image %}
+  if link.type == 'collection_link'
+    if link.object.featured_image
+      assign featured_image = link.object.featured_image
+    elsif link.object.products.size > 0
+      assign product_object = link.object.products | where: 'featured_image' | first
+      assign featured_image = product_object.featured_image
+    endif
+  elsif link.type == 'collections_link'
+    assign collection_object = collections | where: 'featured_image' | first
+    assign featured_image = collection_object.featured_image
+  elsif link.type == 'catalog_link'
+    assign product_object = collections.all.products | where: 'featured_image' | first
+    assign featured_image = product_object.featured_image
+  endif
+
+  assign image_style = ''
+  if use_focal_point and featured_image.presentation.focal_point != blank
+    assign image_style = 'object-position: ' | append: featured_image.presentation.focal_point | append: ';'
+  endif
+%}
+
+{% if featured_image %}
+  {% if image_style != blank %}
     {{
-      link.object.featured_image
+      featured_image
       | image_url: width: 800
-      | image_tag: loading: 'lazy', class: class, sizes: image_sizes
+      | image_tag: loading: 'lazy', class: class, sizes: image_sizes, style: image_style
     }}
-  {% elsif link.object.products.size > 0 %}
-    {% assign product_object = link.object.products | where: 'featured_image' | first %}
-    {% if product_object.featured_image %}
-      {{
-        product_object.featured_image
-        | image_url: width: 800
-        | image_tag: loading: 'lazy', class: class, sizes: image_sizes
-      }}
-    {% endif %}
-  {% endif %}
-{% elsif link.type == 'collections_link' %}
-  {% assign collection_object = collections | where: 'featured_image' | first %}
-  {% if collection_object.featured_image %}
+  {% else %}
     {{
-      collection_object.featured_image
-      | image_url: width: 800
-      | image_tag: loading: 'lazy', class: class, sizes: image_sizes
-    }}
-  {% endif %}
-{% elsif link.type == 'catalog_link' %}
-  {% assign product_object = collections.all.products | where: 'featured_image' | first %}
-  {% if product_object.featured_image %}
-    {{
-      product_object.featured_image
+      featured_image
       | image_url: width: 800
       | image_tag: loading: 'lazy', class: class, sizes: image_sizes
     }}

@@ -39,7 +39,7 @@
 %}
 
 <product-price
-  class="text-block {{ text_block_classes }} text-{{ block_settings.alignment }} {{ block_settings.type_preset | default: 'paragraph' }} spacing-style"
+  class="text-block {{ text_block_classes }} text-{{ block_settings.alignment }} {{ block_settings.type_preset | default: 'paragraph' }} spacing-style{% if block_settings.show_variant_prices %} price--card{% endif %}"
   data-block-id="{{ block.id }}"
   data-product-id="{{ product_resource.id }}"
   style="
@@ -53,11 +53,45 @@
   "
   {{ block.shopify_attributes }}
 >
-  {% render 'price',
-    show_unit_price: true,
-    product_resource: product_resource,
-    show_sale_price_first: block_settings.show_sale_price_first
-  %}
+  {%- liquid
+    # Variant list: available variants, or all of them when none are (e.g. past favorites)
+    assign show_variant_prices = false
+    if block_settings.show_variant_prices and product_resource.has_only_default_variant == false
+      assign show_variant_prices = true
+      assign price_variants = product_resource.variants | where: 'available'
+      if price_variants.size == 0
+        assign price_variants = product_resource.variants
+      endif
+    endif
+  -%}
+  {% if show_variant_prices %}
+    <ul class="variant-prices list-unstyled">
+      {% for variant in price_variants %}
+        {%- liquid
+          if settings.currency_code_enabled_product_cards
+            assign variant_price = variant.price | money_with_currency
+            assign variant_compare_at_price = variant.compare_at_price | money_with_currency
+          else
+            assign variant_price = variant.price | money
+            assign variant_compare_at_price = variant.compare_at_price | money
+          endif
+        -%}
+        <li class="variant-prices__item">
+          <span class="variant-prices__label">{{ variant.title }}</span>
+          {% if variant.compare_at_price > variant.price %}
+            <s class="variant-prices__compare">{{ variant_compare_at_price }}</s>
+          {% endif %}
+          <span class="variant-prices__price">{{ variant_price }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    {% render 'price',
+      show_unit_price: true,
+      product_resource: product_resource,
+      show_sale_price_first: block_settings.show_sale_price_first
+    %}
+  {% endif %}
 
   {% if block_settings.show_tax_info %}
     <div class="tax-note">
@@ -92,6 +126,25 @@
 
 {% render 'payment-terms-styles' %}
 
+{% stylesheet %}
+  /* Cards with "Show each variant's price" on: variant list and single prices at 15px */
+  /* Override the variable: base.css sets font-size on .paragraph and its direct children */
+  product-price.price--card {
+    --font-paragraph--size: 15px;
+  }
+
+  .variant-prices {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15em;
+    margin: 0;
+  }
+
+  .variant-prices__compare {
+    opacity: 0.6;
+  }
+{% endstylesheet %}
+
 {% schema %}
 {
   "name": "t:names.product_price",
@@ -110,6 +163,13 @@
       "id": "show_sale_price_first",
       "label": "t:settings.show_sale_price_first",
       "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_variant_prices",
+      "label": "Show each variant's price",
+      "info": "Lists available variants as \"Name $price\". For product cards.",
+      "default": false
     },
     {
       "type": "checkbox",

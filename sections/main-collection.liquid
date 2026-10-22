@@ -46,22 +46,29 @@
     <div
       class="collection-wrapper grid gap-style{% if section.settings.product_grid_width == 'full-width' %} collection-wrapper--grid-full-width{% endif %}"
     >
-      {% content_for 'block',
-        type: 'filters',
-        id: 'filters',
-        results: collection,
-        results_size: collection.products_count
+      {% comment %}
+        Filters/sort bar removed. All products load on one page and are split into
+        "Current Menu" (available) and "Past Favorites" (unavailable), except on the
+        current menu collection itself, which shows a single grid.
+      {% endcomment %}
+      {% liquid
+        assign current_menu_collection = section.settings.current_menu_collection
+        assign split_products = true
+        if current_menu_collection != blank and collection.id == current_menu_collection.id
+          assign split_products = false
+        endif
       %}
 
-      {% assign products_per_page = 24 %}
+      {% paginate collection.products by 250 %}
+        {% liquid
+          assign current_cards = ''
+          assign past_cards = ''
+          assign current_count = 0
+          assign past_count = 0
+        %}
 
-      {% if section.settings.enable_infinite_scroll == false %}
-        {% assign products_per_page = section.settings.products_per_page %}
-      {% endif %}
-
-      {% paginate collection.products by products_per_page %}
-        {% capture children %}
-          {% for product in collection.products %}
+        {% for product in collection.products %}
+          {% capture card %}
             <li
               id="{{ section.id }}-{{ product.id }}"
               class="product-grid__item product-grid__item--{{ forloop.index0 }}"
@@ -76,20 +83,99 @@
                 product_view_context: 'collection'
               %}
             </li>
-          {% endfor %}
+          {% endcapture %}
+
+          {% liquid
+            if split_products == false or product.available
+              assign current_cards = current_cards | append: card
+              assign current_count = current_count | plus: 1
+            else
+              assign past_cards = past_cards | append: card
+              assign past_count = past_count | plus: 1
+            endif
+          %}
+        {% endfor %}
+
+        {% capture children %}
+          {% if split_products %}
+            <li class="product-grid__group">
+              <h2 class="product-grid__group-title main-collection-grid__title h3">
+                {{ section.settings.current_heading }} ({{ current_count }})
+              </h2>
+              {% if current_count == 0 %}
+                <p class="product-grid__group-empty">
+                  {{ section.settings.current_empty_text }}
+                  {% if current_menu_collection != blank %}
+                    <a href="{{ current_menu_collection.url }}">{{ section.settings.current_menu_link_text }}</a>
+                  {% endif %}
+                </p>
+              {% endif %}
+            </li>
+          {% endif %}
+
+          {{ current_cards }}
+
+          {% if split_products and past_count > 0 %}
+            <li
+              class="product-grid__group product-grid__group--past"
+              style="--color-border: {{ settings.color_palette.color1 }};"
+            >
+              <h2 class="product-grid__group-title main-collection-grid__title h3">
+                {{ section.settings.past_heading }} ({{ past_count }})
+              </h2>
+            </li>
+            {{ past_cards }}
+          {% endif %}
         {% endcapture %}
+
+        {% assign empty_title = section.settings.empty_text | replace: '[title]', collection.title %}
 
         {% render 'product-grid',
           section: section,
           children: children,
           products: collection.products,
           paginate: paginate,
-          enable_infinite_scroll: section.settings.enable_infinite_scroll
+          enable_infinite_scroll: false,
+          empty_title: empty_title,
+          full_mobile_row_gap: true
         %}
       {% endpaginate %}
     </div>
   </results-list>
 </collection-component>
+
+{% stylesheet %}
+  .product-grid__group {
+    grid-column: 1 / -1;
+    list-style: none;
+  }
+
+  /* Divider between Current Menu and Past Favorites, 48px above and below */
+  .product-grid__group--past {
+    margin-block-start: 48px;
+    padding-block-start: 48px;
+    border-block-start: 1px solid var(--color-border);
+  }
+
+  .product-grid__group-title {
+    margin-block: 0;
+    padding-block-end: 10px;
+  }
+
+  .product-grid__group-empty {
+    margin-block: var(--padding-sm) 0;
+  }
+
+  .collection-wrapper--full-width .product-grid__group-empty {
+    margin-inline-start: var(--page-margin);
+  }
+
+  .collection-wrapper--full-width-on-mobile .product-grid__group-empty {
+    @media screen and (max-width: 749px) {
+      margin-inline-start: var(--page-margin);
+    }
+  }
+{% endstylesheet %}
 
 {% schema %}
 {
@@ -170,6 +256,50 @@
       "step": 4,
       "default": 24,
       "visible_if": "{{ section.settings.enable_infinite_scroll == false }}"
+    },
+    {
+      "type": "header",
+      "content": "Current menu / past favorites"
+    },
+    {
+      "type": "paragraph",
+      "content": "Products are split into available (current) and unavailable (past). Not split on the current menu collection."
+    },
+    {
+      "type": "collection",
+      "id": "current_menu_collection",
+      "label": "Current menu collection"
+    },
+    {
+      "type": "text",
+      "id": "current_heading",
+      "label": "Current heading",
+      "default": "Current Menu"
+    },
+    {
+      "type": "text",
+      "id": "past_heading",
+      "label": "Past heading",
+      "default": "Past Favorites"
+    },
+    {
+      "type": "text",
+      "id": "current_empty_text",
+      "label": "No current products text",
+      "default": "None of these are on the current menu right now."
+    },
+    {
+      "type": "text",
+      "id": "current_menu_link_text",
+      "label": "Current menu link text",
+      "default": "View the current menu"
+    },
+    {
+      "type": "text",
+      "id": "empty_text",
+      "label": "Empty collection text",
+      "info": "[title] is replaced with the collection title",
+      "default": "No [title] desserts found"
     },
     {
       "type": "header",
